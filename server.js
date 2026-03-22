@@ -2,12 +2,19 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
 
-const app = express();
 require("dotenv").config();
-app.use(cors());
+
+const app = express();
+
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 app.use(express.json());
 
-// ✅ Hostinger SMTP config
+// SMTP
 const transporter = nodemailer.createTransport({
   host: "smtp.hostinger.com",
   port: 465,
@@ -15,31 +22,39 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.EMAIL,
     pass: process.env.PASSWORD
-  }
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000
 });
 
-// ✅ API to send mail
+// API
 app.post("/send-mail", async (req, res) => {
   const data = req.body;
 
+  console.log("Incoming:", data);
+
+  if (!data.senderEmail) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
   try {
     await transporter.sendMail({
-      from: `"Star City Warehouse" info@starcityparcelservice.com`,
+      from: `"Star City Warehouse" <info@starcityparcelservice.com>`,
       to: data.senderEmail,
       subject: "Warehouse Request Received",
       html: `
         <h2>Request Received ✅</h2>
-        <p><b>Request ID:</b> ${data.bookingId}</p>
+        <p><b>ID:</b> ${data.bookingId}</p>
         <p><b>Name:</b> ${data.senderName}</p>
-        <p><b>Storage Type:</b> ${data.deliveryType}</p>
-        <p>We will contact you shortly.</p>
+        <p><b>Type:</b> ${data.deliveryType}</p>
       `
     });
 
     res.json({ success: true });
 
   } catch (err) {
-    console.error(err);
+    console.error("MAIL ERROR:", err);
     res.status(500).json({ error: "Mail failed" });
   }
 });
