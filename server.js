@@ -24,7 +24,7 @@ app.post("/send-mail", async (req, res) => {
 
   try {
     await transporter.sendMail({
-      from: `"Star City Warehouse" <info@yourdomain.com>`,
+      from: `"Star City Warehouse" info@starcityparcelservice.com`,
       to: data.senderEmail,
       subject: "Warehouse Request Received",
       html: `
