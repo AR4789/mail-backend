@@ -3,6 +3,8 @@ const nodemailer = require("nodemailer");
 const cors = require("cors");
 
 require("dotenv").config();
+require('dns').setDefaultResultOrder('ipv4first');
+
 
 const app = express();
 
@@ -17,15 +19,15 @@ app.use(express.json());
 // SMTP
 const transporter = nodemailer.createTransport({
   host: "smtp.hostinger.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL,
     pass: process.env.PASSWORD
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // API
