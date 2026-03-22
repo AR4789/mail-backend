@@ -1,13 +1,10 @@
 const express = require("express");
-const nodemailer = require("nodemailer");
 const cors = require("cors");
-
 require("dotenv").config();
-require('dns').setDefaultResultOrder('ipv4first');
-
 
 const app = express();
 
+// CORS
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST"],
@@ -16,21 +13,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// SMTP
-const transporter = nodemailer.createTransport({
-  host: "smtp.hostinger.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASSWORD
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
+// HEALTH CHECK (important for Render)
+app.get("/", (req, res) => {
+  res.send("Backend running 🚀");
 });
 
-// API
+// SEND MAIL API
 app.post("/send-mail", async (req, res) => {
   const data = req.body;
 
@@ -41,17 +29,32 @@ app.post("/send-mail", async (req, res) => {
   }
 
   try {
-    await transporter.sendMail({
-      from: `"Star City Warehouse" <info@starcityparcelservice.com>`,
-      to: data.senderEmail,
-      subject: "Warehouse Request Received",
-      html: `
-        <h2>Request Received ✅</h2>
-        <p><b>ID:</b> ${data.bookingId}</p>
-        <p><b>Name:</b> ${data.senderName}</p>
-        <p><b>Type:</b> ${data.deliveryType}</p>
-      `
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Star City <info@starcityparcelservice.com>", // must be verified domain in Resend
+        to: data.senderEmail,
+        subject: "Warehouse Request Received",
+        html: `
+          <h2>Request Received ✅</h2>
+          <p><b>Request ID:</b> ${data.bookingId}</p>
+          <p><b>Name:</b> ${data.senderName}</p>
+          <p><b>Storage Type:</b> ${data.deliveryType}</p>
+          <p>We will contact you shortly.</p>
+        `
+      })
     });
+
+    const result = await response.json();
+    console.log("Resend response:", result);
+
+    if (!response.ok) {
+      return res.status(500).json({ error: "Email failed", details: result });
+    }
 
     res.json({ success: true });
 
@@ -61,5 +64,8 @@ app.post("/send-mail", async (req, res) => {
   }
 });
 
+// START SERVER
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port " + PORT));
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
